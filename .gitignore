@@ -1,0 +1,33 @@
+# Environment variables with secrets
+.env
+
+# Slskd configuration with credentials
+slskd/config/slskd.yml
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+ENV/
+env/
+
+# Docker volumes and data
+slskd/data/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log

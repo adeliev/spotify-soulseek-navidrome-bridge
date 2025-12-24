@@ -1,0 +1,15 @@
+web:
+  authentication:
+    api_keys:
+      bridge:
+        key: your_slskd_api_key_here  # Must match SLSKD_API_KEY in .env
+        role: administrator
+soulseek:
+  username: your_soulseek_username  # Must match SLSKD_SLSK_USERNAME in .env
+  password: your_soulseek_password  # Must match SLSKD_SLSK_PASSWORD in .env
+shares:
+  directories:
+    - /app/downloads  # Share temporary downloads from _Soulseek folder
+directories:
+  downloads: /app/downloads
+remote_configuration: false

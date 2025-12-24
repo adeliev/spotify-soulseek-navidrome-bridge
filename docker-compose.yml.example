@@ -1,0 +1,64 @@
+# Spotify-Soulseek Bridge Docker Compose Configuration
+# Copy this file to docker-compose.yml and adjust paths for your system
+
+services:
+  slskd:
+    image: slskd/slskd:latest
+    container_name: slskd
+    environment:
+      - TZ=UTC  # Adjust to your timezone (e.g., America/New_York, Europe/London)
+    volumes:
+      # Slskd configuration file
+      - ./slskd/config/slskd.yml:/app/slskd.yml
+
+      # Temporary download directory (will be cleaned after processing)
+      # Replace with your actual path to _Soulseek folder
+      - /path/to/your/music/_Soulseek:/app/downloads
+    ports:
+      - "5030:5030"  # Web UI
+      - "5031:5031"  # HTTPS Web UI
+      - "50300-50305:50300-50305"  # Soulseek listening ports
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5030/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  bridge:
+    build: ./bridge
+    container_name: spotify-soulseek-bridge
+    environment:
+      # Spotify API credentials (from .env file)
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+      - SPOTIFY_PLAYLIST_ID=${SPOTIFY_PLAYLIST_ID}
+
+      # Navidrome connection
+      # Adjust the URL to match your Navidrome container name or IP
+      - NAVIDROME_URL=http://navidrome:4533
+      - NAVIDROME_USER=${NAVIDROME_USER}
+      - NAVIDROME_PASS=${NAVIDROME_PASS}
+
+      # Slskd connection (internal Docker network)
+      - SLSKD_URL=http://slskd:5030
+      - SLSKD_API_KEY=${SLSKD_API_KEY}
+    volumes:
+      # Music library root (needs read-write access)
+      # This should contain both _Soulseek/ and Daily/ folders
+      # Replace with your actual music library path
+      - /path/to/your/music:/music
+    restart: unless-stopped
+    depends_on:
+      slskd:
+        condition: service_healthy
+    networks:
+      - default
+      # If Navidrome is on a different network, add it here
+      # - navidrome_net
+
+# Optional: If Navidrome is on an external network
+# networks:
+#   navidrome_net:
+#     external: true
+#     name: your_navidrome_network_name
