@@ -1,4 +1,4 @@
-# Spotify-Soulseek Bridge
+# Spotify-Soulseek-Navidrome Bridge
 
 Automatically sync your Spotify playlist to your local music library using Soulseek. This bridge service searches for and downloads missing tracks from your Spotify playlist via the Soulseek network, organizing them for use with Navidrome or other music servers.
 
