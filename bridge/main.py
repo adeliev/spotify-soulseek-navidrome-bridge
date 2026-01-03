@@ -49,39 +49,19 @@ def get_spotify_tracks():
         logger.error(f"Error fetching Spotify tracks: {e}")
         return []
 
-def check_navidrome_exists(artist, title):
+def load_library_index():
     try:
-        # Subsonic API Authentication
-        salt = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
-        token = hashlib.md5((NAVIDROME_PASS + salt).encode('utf-8')).hexdigest()
+        import json
+        index_path = "/music/library_index.json"
+        if not os.path.exists(index_path):
+            logger.warning("Library index not found. Run scan_library.py first.")
+            return {}
         
-        params = {
-            'u': NAVIDROME_USER,
-            't': token,
-            's': salt,
-            'v': '1.16.1',
-            'c': 'spotify-bridge',
-            'f': 'json',
-            'query': f"{artist} {title}"
-        }
-        
-        # Search endpoint
-        url = f"{NAVIDROME_URL}/rest/search3"
-        response = requests.get(url, params=params)
-        response.raise_for_status()
-        data = response.json()
-        
-        if 'subsonic-response' in data and 'searchResult3' in data['subsonic-response']:
-            results = data['subsonic-response']['searchResult3']
-            if 'song' in results:
-                for song in results['song']:
-                    # Simple exact match check (case-insensitive)
-                    if song['title'].lower() == title.lower() and song['artist'].lower() == artist.lower():
-                        return True
-        return False
+        with open(index_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
     except Exception as e:
-        logger.error(f"Error checking Navidrome: {e}")
-        return False
+        logger.error(f"Error loading library index: {e}")
+        return {}
 
 def normalize_string(s):
     """Normalize string for matching: lowercase, remove special chars"""
@@ -237,7 +217,32 @@ def cleanup_old_files():
     except Exception as e:
         logger.error(f"Error during cleanup: {e}")
 
-def organize_downloaded_files():
+def clean_string(text):
+    """Remove common clutter from strings like (Radio Edit), (Ft. ...), etc."""
+    import re
+    if not text:
+        return ""
+    
+    # 1. Remove text inside brackets/parentheses containing keywords
+    # Use word boundaries (\b) to prevent matching parts of words (e.g. 'ver' in 'Cover')
+    keywords = r"\bradio\b|\bedit\b|\bmix\b|\bremix\b|\bremaster\b|\bfeat\b|\bft\.?|\bfeature\b|\bextended\b|\bclub\b|\boriginal\b|\bvocal\b|\bversion\b"
+    
+    pattern = r'\s*[(\[][^)\]]*?(?:' + keywords + r')[^)\]]*?[)\]]'
+    
+    prev_text = None
+    while text != prev_text:
+        prev_text = text
+        text = re.sub(pattern, '', text, flags=re.IGNORECASE)
+
+    # 2. Remove trailing " - Radio Edit" etc patterns (no brackets)
+    text = re.sub(r'\s*-\s*.*?(?:' + keywords + r').*?$', '', text, flags=re.IGNORECASE)
+
+    # 3. Remove "Ft. Artist" (no brackets)
+    text = re.sub(r'\s+(?:feat|ft\.|feature)\.?\s+.*$', '', text, flags=re.IGNORECASE)
+
+    return text.strip()
+
+def organize_downloaded_files(expected_tracks=[]):
     """Process files from _Soulseek and move to Daily root with 'Artist - Title.mp3' format"""
     try:
         import os
@@ -266,40 +271,74 @@ def organize_downloaded_files():
                     continue
 
                 source_path = os.path.join(root, filename)
-
-                # Try to get artist and title from ID3 tags
+                
+                # Default: use filename as base
+                artist_candidate = ""
+                title_candidate = ""
+                
+                # 1. Try to get metadata from ID3
                 try:
                     audio = MP3(source_path, ID3=ID3)
-                    artist = None
-                    title = None
-
                     if audio.tags:
-                        # Try to get artist (TPE1)
                         if 'TPE1' in audio.tags:
-                            artist = str(audio.tags['TPE1'])
-                        # Try to get title (TIT2)
+                            artist_candidate = str(audio.tags['TPE1'])
                         if 'TIT2' in audio.tags:
-                            title = str(audio.tags['TIT2'])
-
-                    # If we got both, create clean filename
-                    if artist and title:
-                        # Remove invalid filename characters
-                        artist_clean = re.sub(r'[<>:"/\\|?*]', '', artist).strip()
-                        title_clean = re.sub(r'[<>:"/\\|?*]', '', title).strip()
-                        new_filename = f"{artist_clean} - {title_clean}.mp3"
+                            title_candidate = str(audio.tags['TIT2'])
+                except Exception:
+                    pass
+                
+                # 2. Match against expected Spotify tracks to get CANONICAL name
+                matched_track = None
+                
+                # Check using ID3 tags first
+                if artist_candidate and title_candidate:
+                    for track in expected_tracks:
+                        if track['artist'].lower() in artist_candidate.lower() and \
+                           track['title'].lower() in title_candidate.lower():
+                            matched_track = track
+                            break
+                
+                # If no match, check using filename
+                if not matched_track:
+                    for track in expected_tracks:
+                        if matches_track(filename, track['artist'], track['title']):
+                            matched_track = track
+                            break
+                
+                if matched_track:
+                    # Best case: We know exactly what song this is
+                    final_artist = matched_track['artist']
+                    final_title = matched_track['title']
+                    logger.info(f"Matched {filename} to Spotify: {final_artist} - {final_title}")
+                else:
+                    # Fallback: Clean up the tags/filename we have
+                    logger.info(f"No Spotify match for {filename}, applying heuristic cleaning")
+                    
+                    if artist_candidate and title_candidate:
+                        final_artist = clean_string(artist_candidate)
+                        final_title = clean_string(title_candidate)
                     else:
-                        # Fallback to original filename
-                        new_filename = filename
+                        # Parsing filename "Artist - Title.mp3" or similar
+                        # Very basic heuristic
+                        base = os.path.splitext(filename)[0]
+                        if " - " in base:
+                            parts = base.split(" - ", 1)
+                            final_artist = clean_string(parts[0])
+                            final_title = clean_string(parts[1])
+                        else:
+                            final_artist = "Unknown"
+                            final_title = clean_string(base)
 
-                except Exception as e:
-                    logger.warning(f"Could not read tags from {filename}, using original name: {e}")
-                    new_filename = filename
-
+                # Remove invalid filename characters
+                final_artist = re.sub(r'[<>:"/\\|?*]', '', final_artist).strip()
+                final_title = re.sub(r'[<>:"/\\|?*]', '', final_title).strip()
+                
+                new_filename = f"{final_artist} - {final_title}.mp3"
                 dest_path = os.path.join(daily_folder, new_filename)
 
-                # If file exists in Daily, skip (already processed)
+                # Check if this Canonical Filename already exists
                 if os.path.exists(dest_path):
-                    logger.info(f"Skipping (already exists): {new_filename}")
+                    logger.info(f"Skipping (Canonical file already exists): {new_filename}")
                     continue
 
                 try:
@@ -383,7 +422,7 @@ def update_id3_tags():
     except Exception as e:
         logger.error(f"Error updating ID3 tags: {e}")
 
-def create_playlist():
+def create_playlist(library_files=[]):
     """Create M3U playlist for Navidrome"""
     try:
         import os
@@ -395,24 +434,29 @@ def create_playlist():
         playlist_name = "Daily Mix.m3u"
         playlist_path = os.path.join(daily_folder, playlist_name)
 
-        # Collect all MP3 files
-        mp3_files = []
+        # Collect all MP3 files in Daily
+        daily_files = []
         for filename in sorted(os.listdir(daily_folder)):
             if filename.lower().endswith('.mp3'):
-                mp3_files.append(filename)
+                daily_files.append(filename)
 
-        if not mp3_files:
-            logger.info("No MP3 files found for playlist")
+        if not daily_files and not library_files:
+            logger.info("No files found for playlist")
             return
 
         # Create M3U playlist
         with open(playlist_path, 'w', encoding='utf-8') as f:
             f.write("#EXTM3U\n")
-            for filename in mp3_files:
-                # Write relative path for portability
+            
+            # 1. Add files from existing library (Absolute paths)
+            for path in library_files:
+                f.write(f"{path}\n")
+                
+            # 2. Add files from Daily folder (Relative paths)
+            for filename in daily_files:
                 f.write(f"{filename}\n")
 
-        logger.info(f"Created playlist: {playlist_name} with {len(mp3_files)} tracks")
+        logger.info(f"Created playlist: {playlist_name} with {len(library_files)} library tracks and {len(daily_files)} daily tracks")
 
     except Exception as e:
         logger.error(f"Error creating playlist: {e}")
@@ -456,8 +500,13 @@ def clear_download_queue():
 def job():
     import time
     from datetime import datetime, timedelta
+    import re # Ensure re is imported for cleaning logic if not global
 
     logger.info("Starting Sync Job...")
+
+    # Load Library Index
+    library_index = load_library_index()
+    library_matches = []
 
     # Set timeout: 30 minutes
     start_time = datetime.now()
@@ -467,6 +516,9 @@ def job():
     tracks = get_spotify_tracks()
     processed_count = 0
     timeout_reached = False
+    
+    # List of tracks to organize/download
+    tracks_to_process = []
 
     for track in tracks:
         # Check if timeout reached
@@ -474,13 +526,22 @@ def job():
             logger.warning(f"Timeout reached ({timeout_minutes} minutes). Stopping search and processing remaining files.")
             timeout_reached = True
             break
+            
+        # Generate key for matching
+        # Must match logic in scan_library.py and clean_string
+        a = clean_string(track['artist'])
+        t = clean_string(track['title'])
+        a = re.sub(r'[<>:"/\\|?*]', '', a).strip()
+        t = re.sub(r'[<>:"/\\|?*]', '', t).strip()
+        lookup_key = f"{a} - {t}".lower()
 
-        exists = check_navidrome_exists(track['artist'], track['title'])
-        if exists:
-            logger.info(f"Skipping (Exists): {track['artist']} - {track['title']}")
+        if lookup_key in library_index:
+            logger.info(f"Found in library: {track['artist']} - {track['title']}")
+            library_matches.append(library_index[lookup_key]['path'])
         else:
             logger.info(f"Missing: {track['artist']} - {track['title']}")
             search_and_download_slskd(track['artist'], track['title'])
+            tracks_to_process.append(track)
             processed_count += 1
 
     elapsed = (datetime.now() - start_time).total_seconds() / 60
@@ -497,13 +558,14 @@ def job():
     time.sleep(10)
 
     # Organize files (move to Daily with Artist - Title format)
-    organize_downloaded_files()
+    # Only try to organize tracks we actually tried to download/process
+    organize_downloaded_files(tracks_to_process)
 
     # Update ID3 tags to Various Artists
     update_id3_tags()
 
-    # Create playlist for Navidrome (includes all files in Daily)
-    create_playlist()
+    # Create playlist for Navidrome (includes Library Matches + Daily files)
+    create_playlist(library_matches)
 
     # Clean up old files (30+ days)
     cleanup_old_files()
