@@ -28,7 +28,7 @@ Automatically sync your Spotify playlist to your local music library using Souls
 - 📂 **Watch Folder**: Process custom playlists manually via `/watch` folder
 - 🧹 **Smart Cleanup**:
   - Automatic duplicate detection using library index
-  - Removes files older than 30 days
+  - Removes files older than 7 days
   - Included `cleanup_duplicates.py` utility
 - ⏱️ **Timeout Protection**: 30-minute execution limit to prevent excessive runtime
 
@@ -175,7 +175,7 @@ Automatically sync your Spotify playlist to your local music library using Souls
    - Updates ID3 tags: Album Artist = "Various Artists", Album = "Daily Mix"
    - Creates/updates `Daily Mix.m3u` playlist with all files
    - Cleans up `_Soulseek/` folder
-   - Removes files older than 30 days from `Daily/`
+   - Removes files older than 7 days from `Daily/`
 
 ### File Processing Example
 
@@ -209,10 +209,10 @@ timeout_minutes = 30  # Change this value
 
 ### Cleanup Period
 
-Files are kept for 30 days by default. Adjust in `bridge/main.py`:
+Files are kept for 7 days by default. Adjust in `bridge/main.py`:
 
 ```python
-cutoff_time = datetime.now() - timedelta(days=30)  # Change days
+cutoff = datetime.now() - timedelta(days=7)  # Change days
 ```
 
 ### Sync Schedule
@@ -331,7 +331,7 @@ This tool is for personal use only. Ensure you comply with copyright laws in you
 - 📂 **Watch-папка**: Обработка пользовательских плейлистов через папку `/watch`
 - 🧹 **Умная очистка**:
   - Автоматическое обнаружение дубликатов через индекс библиотеки
-  - Удаление файлов старше 30 дней
+  - Удаление файлов старше 7 дней
   - Включена утилита `cleanup_duplicates.py`
 - ⏱️ **Защита от зависания**: 30-минутный лимит выполнения
 
@@ -478,7 +478,7 @@ This tool is for personal use only. Ensure you comply with copyright laws in you
    - Обновляет ID3 теги: Album Artist = "Various Artists", Album = "Daily Mix"
    - Создает/обновляет плейлист `Daily Mix.m3u` со всеми файлами
    - Очищает папку `_Soulseek/`
-   - Удаляет файлы старше 30 дней из `Daily/`
+   - Удаляет файлы старше 7 дней из `Daily/`
 
 #### Пример обработки файлов
 
@@ -528,10 +528,10 @@ timeout_minutes = 30  # Измените это значение
 
 #### Период очистки
 
-Файлы хранятся 30 дней по умолчанию. Измените в `bridge/main.py`:
+Файлы хранятся 7 дней по умолчанию. Измените в `bridge/main.py`:
 
 ```python
-cutoff_time = datetime.now() - timedelta(days=30)  # Измените дни
+cutoff = datetime.now() - timedelta(days=7)  # Измените дни
 ```
 
 #### Расписание синхронизации
