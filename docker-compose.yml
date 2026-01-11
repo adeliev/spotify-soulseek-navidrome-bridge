@@ -7,7 +7,7 @@ services:
       - TZ=Europe/Bratislava  # Adjust if needed
     volumes:
       - ./slskd/config/slskd.yml:/app/slskd.yml
-      - /Volumes/DeliRAID5/Media/Music/_Soulseek:/app/downloads
+      - /Volumes/DeliRAID5/Downloads/_Soulseek:/app/downloads
     ports:
       - "5030:5030"
       - "5031:5031"
@@ -23,6 +23,7 @@ services:
     build: ./bridge
     container_name: spotify-soulseek-bridge
     environment:
+      - TZ=Europe/Bratislava
       - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
       - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
       - SPOTIFY_PLAYLIST_ID=${SPOTIFY_PLAYLIST_ID}
@@ -33,6 +34,8 @@ services:
       - SLSKD_API_KEY=${SLSKD_API_KEY}
     volumes:
       - /Volumes/DeliRAID5/Media/Music:/music # Read-write access for organizing files and updating tags
+      - /Volumes/DeliRAID5/Downloads:/downloads # Access to all downloads (includes _Soulseek)
+      - ./watch:/watch # Watch folder for manual playlists
     restart: unless-stopped
     depends_on:
       slskd:
