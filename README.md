@@ -10,7 +10,7 @@ Automatically sync your Spotify playlist to your local music library using Souls
 
 ### Features
 
-- 🎵 **Automatic Sync**: Syncs Spotify playlist every 6 hours
+- 🎵 **Automatic Sync**: Syncs Spotify playlist daily at 05:00 AM
 - 🔍 **Smart Search**: Only searches for tracks missing from your Navidrome library
 - 📥 **Quality Filter**: Downloads only MP3 files with 320kbps or higher bitrate
 - 🎯 **Intelligent Matching**:
@@ -160,7 +160,7 @@ Automatically sync your Spotify playlist to your local music library using Souls
 
 ## How It Works
 
-### Sync Cycle (Every 6 Hours)
+### Daily Sync Cycle (05:00 AM)
 
 1. **Fetch Tracks**: Retrieves up to 50 tracks from your Spotify playlist
 2. **Check Library**: Queries Navidrome to skip tracks you already have
@@ -217,10 +217,16 @@ cutoff_time = datetime.now() - timedelta(days=30)  # Change days
 
 ### Sync Schedule
 
-Default is every 6 hours. Adjust in `bridge/main.py`:
+Default is daily at 05:00 AM. Adjust in `bridge/main.py`:
 
 ```python
-schedule.every(6).hours.do(job)  # Change interval
+schedule.every().day.at("05:00").do(job_daily_sync)  # Change time
+```
+
+Or switch to hourly:
+
+```python
+schedule.every(6).hours.do(job_daily_sync)  # Every 6 hours
 ```
 
 ## Monitoring
@@ -262,7 +268,8 @@ Check download status:
   - Handles search and download operations
 
 - **bridge**: Python sync service
-  - Runs every 6 hours
+  - Runs daily at 05:00 AM
+  - Monitors watch folder every 10 seconds
   - Manages the sync workflow
 
 ## Network Architecture
@@ -306,7 +313,7 @@ This tool is for personal use only. Ensure you comply with copyright laws in you
 
 ### Возможности
 
-- 🎵 **Автоматическая синхронизация**: Синхронизация Spotify плейлиста каждые 6 часов
+- 🎵 **Автоматическая синхронизация**: Синхронизация Spotify плейлиста ежедневно в 05:00
 - 🔍 **Умный поиск**: Ищет только треки, отсутствующие в вашей библиотеке Navidrome
 - 📥 **Фильтр качества**: Скачивает только MP3 файлы с битрейтом 320kbps и выше
 - 🎯 **Интеллектуальное сопоставление**:
@@ -456,7 +463,7 @@ This tool is for personal use only. Ensure you comply with copyright laws in you
 
 ### Как это работает
 
-#### Цикл синхронизации (каждые 6 часов)
+#### Ежедневный цикл синхронизации (05:00)
 
 1. **Получение треков**: Загружает до 50 треков из вашего Spotify плейлиста
 2. **Проверка библиотеки**: Проверяет индекс библиотеки, чтобы пропустить имеющиеся треки
@@ -529,10 +536,16 @@ cutoff_time = datetime.now() - timedelta(days=30)  # Измените дни
 
 #### Расписание синхронизации
 
-По умолчанию каждые 6 часов. Измените в `bridge/main.py`:
+По умолчанию ежедневно в 05:00. Измените в `bridge/main.py`:
 
 ```python
-schedule.every(6).hours.do(job)  # Измените интервал
+schedule.every().day.at("05:00").do(job_daily_sync)  # Измените время
+```
+
+Или переключите на часовой интервал:
+
+```python
+schedule.every(6).hours.do(job_daily_sync)  # Каждые 6 часов
 ```
 
 ### Мониторинг
@@ -574,7 +587,8 @@ docker logs slskd -f
   - Обрабатывает поиск и загрузку
 
 - **bridge**: Python сервис синхронизации
-  - Запускается каждые 6 часов
+  - Запускается ежедневно в 05:00
+  - Мониторит watch-папку каждые 10 секунд
   - Управляет рабочим процессом синхронизации
 
 ### Сетевая архитектура
