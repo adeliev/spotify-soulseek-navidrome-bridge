@@ -1,5 +1,5 @@
 requests
-schedule
-spotipy
 mutagen
 unidecode
+schedule
+watchdog

@@ -1,0 +1,9 @@
+# Artist Aliases
+# Format: name = alias (one per line)
+# Used to match tracks across different alphabets (Latin ↔ Cyrillic)
+# Example: if M3U contains "Kino" but Soulseek has "Кино"
+
+Kino = Кино
+Aria = Ария
+Black Obelisk = Черный обелиск
+Bi-2 = БИ-2

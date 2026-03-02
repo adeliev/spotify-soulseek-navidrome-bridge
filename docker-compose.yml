@@ -1,50 +1,35 @@
-# version: "3"
+# version: '3.8'
+
 services:
   slskd:
-    image: slskd/slskd:latest
+    image: slskd/slskd
     container_name: slskd
+    restart: always
     environment:
-      - TZ=Europe/Bratislava  # Adjust if needed
+      - TZ=Europe/Bratislava
     volumes:
       - ./slskd/config/slskd.yml:/app/slskd.yml
-      - /Volumes/DeliRAID5/Downloads/_Soulseek:/app/downloads
+      - /Volumes/DeliRAID5/Downloads/_Soulseek:/downloads
+      - /Volumes/DeliRAID5/Media/Music/Music/Various Artists:/shares/VariousArtists:ro  # Share music library for Soulseek users
     ports:
       - "5030:5030"
       - "5031:5031"
-      - "50300-50305:50300-50305"  # Soulseek listening ports
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5030/"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
 
   bridge:
     build: ./bridge
     container_name: spotify-soulseek-bridge
+    restart: always
     environment:
       - TZ=Europe/Bratislava
-      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
-      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
-      - SPOTIFY_PLAYLIST_ID=${SPOTIFY_PLAYLIST_ID}
-      - NAVIDROME_URL=http://navidrome-navidrome-1:4533
-      - NAVIDROME_USER=${NAVIDROME_USER}
-      - NAVIDROME_PASS=${NAVIDROME_PASS} # Navidrome API might strictly need Token/Salt, but we can usually auth with user/pass in some clients
       - SLSKD_URL=http://slskd:5030
       - SLSKD_API_KEY=${SLSKD_API_KEY}
+      - LOG_LEVEL=INFO
     volumes:
-      - /Volumes/DeliRAID5/Media/Music:/music # Read-write access for organizing files and updating tags
-      - /Volumes/DeliRAID5/Downloads:/downloads # Access to all downloads (includes _Soulseek)
-      - ./watch:/watch # Watch folder for manual playlists
-    restart: unless-stopped
+      - ./bridge/main.py:/app/main.py
+      - /Volumes/DeliRAID5/Media/Music:/music
+      - /Volumes/DeliRAID5/Downloads:/downloads
+      - ./data:/app/data
     depends_on:
-      slskd:
-        condition: service_healthy
-    networks:
-      - default
-      - navidrome_net
-
-networks:
-  navidrome_net:
-    external: true
-    name: navidrome_default
+      - slskd
+    stdin_open: true
+    tty: true

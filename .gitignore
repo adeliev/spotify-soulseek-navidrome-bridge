@@ -1,8 +1,14 @@
-# Environment variables with secrets
+# Data folder (contains all runtime files)
+data/
+
+# Environment file
 .env
 
 # Slskd configuration with credentials
 slskd/config/slskd.yml
+
+# macOS
+.DS_Store
 
 # Python cache
 __pycache__/
@@ -16,12 +22,6 @@ venv/
 ENV/
 env/
 
-# Docker volumes and data
-slskd/data/
-
-# macOS
-.DS_Store
-
 # IDE
 .vscode/
 .idea/
@@ -31,3 +31,6 @@ slskd/data/
 
 # Logs
 *.log
+
+# Claude
+.claude/
