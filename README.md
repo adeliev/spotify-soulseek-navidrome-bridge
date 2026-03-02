@@ -80,6 +80,29 @@ Aria = Ария
 
 ## Utilities
 
+### polish_tracks.py
+Polishes MP3 tags in Daily and ReleaseRadar folders. Run after downloads complete.
+
+Features:
+- Removes track and discnumber tags
+- Adds artist/title from filename if tags missing
+- Preserves album art
+- Adds "Daily Mix" or "Release Radar" to album tag if missing
+- Sets albumartist = "Various Artists" and compilation = 1 for downloaded tracks
+- Fixes genres: multiple genres separated by semicolons
+
+Run:
+```bash
+python3 polish_tracks.py
+```
+
+Or inside container:
+```bash
+docker compose exec bridge python /app/polish_tracks.py
+```
+
+**Note**: This is a standalone utility for post-download processing.
+
 ### scan_library.py
 Creates `library_index.json` from your music library. Used by bridge to find existing tracks.
 
